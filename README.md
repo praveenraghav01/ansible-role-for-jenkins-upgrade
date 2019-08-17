@@ -25,8 +25,8 @@ Example Playbook
 Example of how to use your role (for instance, with variables passed in as parameters):
 ```yaml
 - hosts: local
-    become: true
-    roles:
+  become: true
+  roles:
     - ansible-role-jenkins-upgrade
 ```
 License
