@@ -11,7 +11,7 @@ Role Variables
 
 ```yaml
 # url to get the jenkins war files
-jenkins_pkg_url: "https://updates.jenkins-ci.org/download/war"
+jenkins_pkg_url: "https://updates.jenkins.io/download/war/"
 
 # jenkins version to which you want to upgrade
 jenkins_version: "2.182"
