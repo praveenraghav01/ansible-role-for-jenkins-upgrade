@@ -1,0 +1,25 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: ec2
+lint:
+  name: yamllint
+platforms:
+  - name: ec2-instance
+    image: ${ami_id}
+    instance_type: ${instance_type}
+    vpc_subnet_id: ${vpc_subnet_id}
+provisioner:
+  name: ansible
+  lint:
+    name: ansible-lint
+  log: True
+  env:
+    ANSIBLE_STDOUT_CALLBACK: yaml
+scenario:
+  name: ec2
+verifier:
+  name: testinfra
+  lint:
+    name: flake8

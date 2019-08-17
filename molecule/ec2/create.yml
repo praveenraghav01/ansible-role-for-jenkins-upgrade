@@ -1,0 +1,153 @@
+---
+- name: Create
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  no_log: "{{ not (lookup('env', 'MOLECULE_DEBUG') | bool or molecule_yml.provisioner.log|default(false) | bool) }}"
+  vars_files:
+    - vars.yml
+  vars:
+    role_name: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') | basename }}"
+    aws_resource_name_tag_value: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') | basename }}-molecule-test-{{ branch }}-"
+    security_group_description: Security group for testing Molecule
+    sg_ing_rules: []
+    keypair_path: "{{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/ssh_key"
+
+  tasks:
+    - name: Get the current caller identity facts
+      aws_caller_facts:
+      register: caller_facts
+
+    - name: Set the suffix in aws_resource_name_tag_value
+      set_fact:
+        aws_resource_name_tag_value: "{{ aws_resource_name_tag_value + suffix }}"
+      vars:
+        suffix: "{{ ansible_facts.ansible_machine_id | default(caller_facts.user_id.split(':')[1]) }}"
+
+    - name: get public ip of ansible host
+      ipify_facts:
+      register: public_ip
+
+
+    - name: add cidr info to dict
+      set_fact:
+        sg_ing_rules: "{{ sg_ing_rules + [ing_rule] }}"
+      vars:
+        public_ip_p: "{ 'cidr_ip': '{{ public_ip.ansible_facts.ipify_public_ip }}/32' }"
+        ing_rule: "{{ item | combine(public_ip_p) }}"
+      with_items: "{{ security_group_rules['ingress'] }}"
+
+    - name: Create security group
+      ec2_group:
+        name: "{{ aws_resource_name_tag_value }}"
+        description: "{{ aws_resource_name_tag_value }}"
+        rules: "{{ sg_ing_rules }}"
+        rules_egress: "{{ security_group_rules['egress'] }}"
+        tags:
+          Name: "{{ aws_resource_name_tag_value }}"
+        vpc_id: "{{ vpc_id }}"
+        region: "{{ region }}"
+      register: security_group
+
+    - name: Test for presence of local keypair
+      stat:
+        path: "{{ keypair_path }}"
+      register: keypair_local
+
+    - name: Delete remote keypair
+      ec2_key:
+        name: "{{ aws_resource_name_tag_value }}"
+        state: absent
+        region: "{{ region }}"
+      when: not keypair_local.stat.exists
+
+    - name: Create keypair
+      ec2_key:
+        name: "{{ aws_resource_name_tag_value }}"
+        region: "{{ region }}"
+      register: keypair
+
+
+    - name: Persist the keypair
+      copy:
+        dest: "{{ keypair_path }}"
+        content: "{{ keypair.key.private_key }}"
+        mode: 0600
+      when: keypair.changed # noqa 503
+
+    - name: Create molecule instance(s)
+      ec2:
+        key_name: "{{ aws_resource_name_tag_value }}"
+        image: "{{ item.image }}"
+        instance_type: "{{ item.instance_type }}"
+        vpc_subnet_id: "{{ item.vpc_subnet_id }}"
+        region: "{{ region }}"
+        group: "{{ aws_resource_name_tag_value }}"
+        instance_tags:
+          instance: "{{ item.name }}"
+          Name: "{{ aws_resource_name_tag_value }}"
+        wait: true
+        assign_public_ip: true
+        exact_count: 1
+        count_tag:
+          instance: "{{ item.name }}"
+          Name: "{{ aws_resource_name_tag_value }}"
+      register: server
+      with_items: "{{ molecule_yml.platforms }}"
+      async: 7200
+      poll: 0
+
+    - name: Wait for instance(s) creation to complete
+      async_status:
+        jid: "{{ item.ansible_job_id }}"
+      register: ec2_jobs
+      until: ec2_jobs.finished
+      retries: 300
+      with_items: "{{ server.results }}"
+
+    - name: Delete instance reference from ec2_jobs register and delete ec2 instance
+      ec2:
+        state: 'absent'
+        region: "{{ region }}"
+        instance_ids: '{{ item.tagged_instances[0].id }}'
+      when: not item.instances
+      with_items: "{{ ec2_jobs.results }}"
+
+
+    - name: Populate instance config dict
+      set_fact:
+        instance_conf_dict: {
+          'instance': "{{ item.instances[0].tags.instance }}",
+          'address': "{{ item.instances[0].public_ip }}",
+          'user': "{{ ssh_user }}",
+          'port': "{{ ssh_port }}",
+          'identity_file': "{{ keypair_path }}",
+          'instance_ids': "{{ item.instance_ids }}",
+          'group_id': "{{ security_group.group_id }}"}
+      with_items: "{{ ec2_jobs.results }}"
+      register: instance_config_dict
+      when: server.changed | bool # noqa 503
+
+    - name: Convert instance config dict to a list
+      set_fact:
+        instance_conf: "{{ instance_config_dict.results | map(attribute='ansible_facts.instance_conf_dict') | list }}"
+      when: server.changed | bool # noqa 503
+
+    - name: Dump instance config
+      copy:
+        content: "{{ instance_conf | to_json | from_json | molecule_to_yaml | molecule_header }}"
+        dest: "{{ molecule_instance_config }}"
+      when: server.changed | bool # noqa 503
+
+    - name: Wait for SSH
+      wait_for:
+        port: "{{ ssh_port }}"
+        host: "{{ item.address }}"
+        search_regex: SSH
+        delay: 10
+        timeout: 320
+      with_items: "{{ lookup('file', molecule_instance_config) | molecule_from_yaml }}"
+
+    - name: Wait for boot process to finish
+      pause:
+        minutes: 2

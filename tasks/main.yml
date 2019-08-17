@@ -1,0 +1,32 @@
+---
+
+- name: Delete older files
+  command: rm -rf /tmp/jenkins.war
+  when: jenkins_version is defined
+
+- name: Download Jenkins war apiVersion
+  get_url:
+    url: "{{ jenkins_pkg_url }}/{{ jenkins_version }}/jenkins.war"
+    dest: /tmp/jenkins.war
+  when: jenkins_version is defined
+
+- name: Copy old war file to /tmp folder
+  shell: yes | cp /usr/lib/jenkins/jenkins.war /tmp/jenkins.war.previous.version
+  when: jenkins_version is defined
+
+- name: Copy the newly downloaded war file to the /usr/lib/jenkins directory
+  shell: yes | cp /tmp/jenkins.war /usr/lib/jenkins/
+  when: jenkins_version is defined
+
+- name: Stop the Jenkins service
+  service:
+    name: jenkins
+    state: stopped
+  when: jenkins_version is defined
+
+- name: Start the Jenkins service
+  service:
+    name: jenkins
+    enabled: yes
+    state: started
+  when: jenkins_version is defined
