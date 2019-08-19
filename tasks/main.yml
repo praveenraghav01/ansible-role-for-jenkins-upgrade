@@ -43,7 +43,6 @@
   wait_for:
     port: 8080
     state: stopped
-  when: jenkins_user_password is defined
 
 - name: Delete old Jenkins war file
   file:
