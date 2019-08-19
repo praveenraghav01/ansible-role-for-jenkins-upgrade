@@ -1,18 +1,18 @@
 ---
 
-- name: Delete older files
+- name: Delete old Jenkins war file
   command: rm -rf /tmp/jenkins.war
   when: jenkins_version is defined
 
 - name: Download Jenkins latest war apiVersion if specific version is not provided
   get_url:
-    url: https://updates.jenkins.io/latest/jenkins.war
+    url: "{{ jenkins_pkg_url }}/latest/jenkins.war"
     dest: /tmp/jenkins.war
   when: jenkins_version is not defined
 
 - name: Download Jenkins war apiVersion
   get_url:
-    url: "{{ jenkins_pkg_url }}/{{ jenkins_version }}/jenkins.war"
+    url: "{{ jenkins_pkg_url }}/download/war/{{ jenkins_version }}/jenkins.war"
     dest: /tmp/jenkins.war
   when: jenkins_version is defined
 
