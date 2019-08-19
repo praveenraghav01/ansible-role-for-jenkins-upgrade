@@ -1,7 +1,9 @@
 ---
 
 - name: Download Jenkins CLI jar file
-  shell: curl http://localhost:8080/jnlpJars/jenkins-cli.jar -o /tmp/jenkins-cli.jar
+  get_url:
+    url: http://localhost:8080/jnlpJars/jenkins-cli.jar
+    dest: /tmp/jenkins-cli.jar
 
 - name: Get AWS Region
   shell: curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq .region -r
@@ -16,10 +18,10 @@
   #   password: "{{ password.stdout }}"
 
 - name: Put Jenkins into safe shutdown
-  shell: java -jar /tmp/jenkins-cli.jar -s http://localhost:8080 -auth {{ jenkins_user_name }}:{ password.stdout }} safe-shutdow
+  shell: java -jar /tmp/jenkins-cli.jar -s http://localhost:8080 -auth {{ jenkins_user_name }}:{{ password.stdout }} safe-shutdow
  
 - name: Wait untils Jenkins web API is available
-  shell: curl --head --silent http://localhost:8080/cli/ --user {{ jenkins_user_name }}:{ password.stdout }}
+  shell: curl --head --silent http://localhost:8080/cli/ --user {{ jenkins_user_name }}:{{ password.stdout }}
   register: result
   until: result.stdout.find("200 OK") == -1
   retries: 12
