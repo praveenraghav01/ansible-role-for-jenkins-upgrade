@@ -1,7 +1,34 @@
 ---
 
+- name: Download Jenkins CLI jar file
+  shell: curl http://localhost:8080/jnlpJars/jenkins-cli.jar -o /tmp/jenkins-cli.jar
+
+- name: Get AWS Region
+  shell: curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq .region -r
+  register: region
+  set_fact: 
+    region={{ region.stdout }}
+
+- name: Get Jenkins Password
+  shell: aws ssm get-parameters --name {{ jenkins_ssm_prefix }}/JenkinsAdminPassword --with-decryption --output text --region {{ region }} | cut -f 6
+  register: password
+  set_fact:
+    password={{ password.stdout }}
+
+- name: Put Jenkins into safe shutdown
+  shell: java -jar /tmp/jenkins-cli.jar -s http://localhost:8080 -auth {{ jenkins_user_name }}:{{ password }} safe-shutdow
+ 
+- name: Wait untils Jenkins web API is available
+  shell: curl --head --silent http://localhost:8080/cli/ --user {{ jenkins_user_name }}:{{ password }}
+  register: result
+  until: result.stdout.find("200 OK") == -1
+  retries: 12
+  delay: 5
+
 - name: Delete old Jenkins war file
-  command: rm -rf /tmp/jenkins.war
+  file:
+    path: /tmp/jenkins.war
+    state: absent
   when: jenkins_version is defined
 
 - name: Download Jenkins latest war apiVersion if specific version is not provided
