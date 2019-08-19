@@ -11,10 +11,20 @@ Role Variables
 
 ```yaml
 # url to get the jenkins war files
-jenkins_pkg_url: "https://updates.jenkins.io/download/war/"
+jenkins_pkg_url: "https://updates.jenkins.io"
 
 # jenkins version to which you want to upgrade
 jenkins_version: "2.182"
+
+# jenkins admin password
+jenkins_user_password: "<your-password>"
+
+# AWS SSM prefix if password is stored in SSM parameter
+jenkins_ssm_prefix: "<your-ssm-parameter-name>"
+
+# jenkins admin user name
+jenkins_user_name: "<your-user-name>"
+
 ```
 
 Dependencies
