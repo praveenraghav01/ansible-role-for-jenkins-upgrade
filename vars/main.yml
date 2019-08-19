@@ -3,8 +3,6 @@
 
 #jenkins_version: "2.189"
 # jenkins_user_password: 
-
 jenkins_pkg_url: https://updates.jenkins.io
 jenkins_ssm_prefix: /SharedServices/JenkinsMaster06
 jenkins_user_name: admin
-
