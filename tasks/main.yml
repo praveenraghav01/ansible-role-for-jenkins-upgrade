@@ -69,10 +69,10 @@
 - name: Copy the newly downloaded war file to the /usr/lib/jenkins directory
   shell: yes | cp /tmp/jenkins.war /usr/lib/jenkins/ 
 
-- name: Stop the Jenkins service
-  service:
-    name: jenkins
-    state: stopped
+# - name: Stop the Jenkins service
+#   service:
+#     name: jenkins
+#     state: stopped
 
 - name: Start the Jenkins service
   service:
