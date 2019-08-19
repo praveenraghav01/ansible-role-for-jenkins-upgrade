@@ -19,25 +19,9 @@
   shell: java -jar /tmp/jenkins-cli.jar -s http://localhost:8080 -auth {{ jenkins_user_name }}:{{ password.stdout }} safe-shutdown
   when: jenkins_user_password is not defined
 
-# - name: Wait untils Jenkins web API is available and password is not defined
-#   shell: curl --head --silent http://localhost:8080/cli/ --user {{ jenkins_user_name }}:{{ password.stdout }}
-#   register: result
-#   until: result.stdout.find("200 OK") == -1
-#   retries: 12
-#   delay: 5
-#   when: jenkins_user_password is not defined
-
 - name: Put Jenkins into safe shutdown when password is defined
   shell: java -jar /tmp/jenkins-cli.jar -s http://localhost:8080 -auth {{ jenkins_user_name }}:{{ jenkins_user_password }} safe-shutdown
   when: jenkins_user_password is defined
-
-# - name: Wait untils Jenkins web API is available and password is defined
-#   shell: curl --head --silent http://localhost:8080/cli/ --user {{ jenkins_user_name }}:{{ jenkins_user_password }}
-#   register: result
-#   until: result.stdout.find("200 OK") == -1
-#   retries: 12
-#   delay: 5
-#   when: jenkins_user_password is defined
 
 - name: Wait untils Jenkins safe shutdown
   wait_for:
@@ -67,11 +51,6 @@
 
 - name: Copy the newly downloaded war file to the /usr/lib/jenkins directory
   shell: yes | cp /tmp/jenkins.war /usr/lib/jenkins/ 
-
-# - name: Stop the Jenkins service
-#   service:
-#     name: jenkins
-#     state: stopped
 
 - name: Start the Jenkins service
   service:
