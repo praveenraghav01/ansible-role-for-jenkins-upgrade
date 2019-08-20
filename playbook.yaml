@@ -1,6 +1,6 @@
 ---
 - name: Update Jenkins
-  hosts: local
+  hosts: localhost
   become: true
   roles:
   - ansible-role-for-jenkins-upgrade
