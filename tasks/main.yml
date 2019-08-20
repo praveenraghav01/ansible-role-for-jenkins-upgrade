@@ -2,4 +2,4 @@
 
 - name: Running Jenkins upgrade task
   include_tasks: jenkins-upgrade.yml
-  when: jenkins_user_name is defined
+  when: jenkins_admin_username is defined

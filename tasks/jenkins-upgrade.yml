@@ -16,11 +16,11 @@
   when: jenkins_user_password is not defined
 
 - name: Put Jenkins into safe shutdown when password is not defined
-  shell: java -jar /tmp/jenkins-cli.jar -s http://localhost:8080 -auth {{ jenkins_user_name }}:{{ password.stdout }} safe-shutdown
+  shell: java -jar /tmp/jenkins-cli.jar -s http://localhost:8080 -auth {{ jenkins_admin_username }}:{{ password.stdout }} safe-shutdown
   when: jenkins_user_password is not defined
 
 - name: Put Jenkins into safe shutdown when password is defined
-  shell: java -jar /tmp/jenkins-cli.jar -s http://localhost:8080 -auth {{ jenkins_user_name }}:{{ jenkins_user_password }} safe-shutdown
+  shell: java -jar /tmp/jenkins-cli.jar -s http://localhost:8080 -auth {{ jenkins_admin_username }}:{{ jenkins_user_password }} safe-shutdown
   when: jenkins_user_password is defined
 
 - name: Wait untils Jenkins safe shutdown
