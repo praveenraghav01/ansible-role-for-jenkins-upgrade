@@ -1,0 +1,59 @@
+---
+
+- name: Download Jenkins CLI jar file
+  get_url:
+    url: http://localhost:8080/jnlpJars/jenkins-cli.jar
+    dest: /tmp/jenkins-cli.jar
+
+- name: Get AWS Region
+  shell: curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq .region -r
+  register: region
+  when: jenkins_user_password is not defined
+
+- name: Get Jenkins Password
+  shell: aws ssm get-parameters --name {{ jenkins_ssm_prefix }}/JenkinsAdminPassword --with-decryption --output text --region {{ region.stdout }} | cut -f 6
+  register: password
+  when: jenkins_user_password is not defined
+
+- name: Put Jenkins into safe shutdown when password is not defined
+  shell: java -jar /tmp/jenkins-cli.jar -s http://localhost:8080 -auth {{ jenkins_user_name }}:{{ password.stdout }} safe-shutdown
+  when: jenkins_user_password is not defined
+
+- name: Put Jenkins into safe shutdown when password is defined
+  shell: java -jar /tmp/jenkins-cli.jar -s http://localhost:8080 -auth {{ jenkins_user_name }}:{{ jenkins_user_password }} safe-shutdown
+  when: jenkins_user_password is defined
+
+- name: Wait untils Jenkins safe shutdown
+  wait_for:
+    port: 8080
+    state: stopped
+
+- name: Delete old Jenkins war file
+  file:
+    path: /tmp/jenkins.war
+    state: absent
+  when: jenkins_version is defined
+
+- name: Download Jenkins latest war apiVersion if specific version is not provided
+  get_url:
+    url: "{{ jenkins_pkg_url }}/latest/jenkins.war"
+    dest: /tmp/jenkins.war
+  when: jenkins_version is not defined
+
+- name: Download Jenkins war apiVersion
+  get_url:
+    url: "{{ jenkins_pkg_url }}/download/war/{{ jenkins_version }}/jenkins.war"
+    dest: /tmp/jenkins.war
+  when: jenkins_version is defined
+
+- name: Copy old war file to /tmp folder
+  shell: yes | cp /usr/lib/jenkins/jenkins.war /tmp/jenkins.war.previous.version
+
+- name: Copy the newly downloaded war file to the /usr/lib/jenkins directory
+  shell: yes | cp /tmp/jenkins.war /usr/lib/jenkins/ 
+
+- name: Start the Jenkins service
+  service:
+    name: jenkins
+    enabled: yes
+    state: started
