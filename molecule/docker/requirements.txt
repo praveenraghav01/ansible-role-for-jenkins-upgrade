@@ -3,5 +3,5 @@ boto3
 awscli
 ansible==2.8.4
 molecule[docker]
-Jinja2==2.10
+Jinja2==2.11.3
 testinfra==1.19.0
