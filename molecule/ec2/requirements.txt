@@ -3,5 +3,5 @@ boto3
 awscli
 ansible==2.7.12
 molecule[ec2]
-Jinja2==2.10
+Jinja2==2.11.3
 testinfra==1.19.0
